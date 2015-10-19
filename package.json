@@ -1,0 +1,17 @@
+{
+  "name": "cljs",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Convenience library build on node-opencl",
+  "main": "openClTester.js",
+  "author": "",
+  "scripts": {
+  },
+  "license": "ISC",
+  "dependencies": {
+    "bunyan": "~1.5.1",
+    "node-opencl": "mikeseven/node-opencl",
+    "q": "~1.1.0",
+    "underscore": "~1.8.0"
+  }
+}

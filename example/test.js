@@ -22,7 +22,7 @@ addKernel.run([256], [256], args)
         console.log('Result is: ', result);
     });
 
-
+/*
 // 1 "instruction", 1 datum
 var half = value / 2;
 
@@ -44,29 +44,34 @@ __kernel void halve(
 
 
 var cl = new CLjs();
-var kernel = cl.createKernel('file.cl', 'halve');
+var kernel = cl.createKernel('file.cl', 'halve', argTypes);
 var dataBuffer = cl.createBuffer(myData);
 var outputBuffer = cl.createBuffer(outputSize);
 kernel.run(numElements, dataBuffer, outputBuffer);
 var result = outputBuffer.read(Int32Array);
+*/
 
 
-
+/*
 // Setup Context
 var ocl = require('node-opencl');
+var fs  = require('fs');
+var myData = new Int32Array([2,4,8]);
+
 var platforms = ocl.getPlatformIDs();
 var platform = platforms[0];
 var devices = ocl.getDeviceIDs(platform, ocl.DEVICE_TYPE_ALL);
 var clErrorHandler = function (e) { throw e;};
 var context = ocl.createContext([ocl.CONTEXT_PLATFORM, platform],
-        device, clErrorHandler, clErrorHandler);
-var queue = ocl.createCommandQueue(context, device, 0);
+        devices, clErrorHandler, clErrorHandler);
+var queue = ocl.createCommandQueue(context, devices[0], 0);
 
 // Make Kernel
-var source = fs.readFileSync('file.cl');
+var source = fs.readFileSync('../kernels/halve.cl', encoding='utf8');
 var kernelName = 'halve';
 var program = ocl.createProgramWithSource(context, source);
-ocl.buildProgram(program, [device], OPTIONAL_COMPILER_FLAGS);
+var OPTIONAL_COMPILER_FLAGS = '';
+ocl.buildProgram(program, devices, OPTIONAL_COMPILER_FLAGS);
 var kernel = ocl.createKernel(program, kernelName);
 
 // Make Data Buffers
@@ -88,7 +93,7 @@ ocl.enqueueReadBuffer(queue, outputBuffer, true, 0, resultBuffer.byteLength, res
 var result = resultBuffer;
 
 
-
+*/
 
 
 

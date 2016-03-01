@@ -5,6 +5,7 @@ var Q = require('q');
 var path = require('path');
 var fs = require('fs');
 var util = require('./util');
+var fs = require('fs');
 var types = require('./types.js');
 
 var ocl = require('node-opencl');
@@ -26,7 +27,7 @@ var Kernel = function (cl, name, file, argTypes) {
     var that = this;
     this.name = name;
     this.file = file;
-    this.qSource = util.getKernelSource(file);
+    this.qSource = getKernelSource(file, name);
     this.argTypes = argTypes;
     this.cl = cl;
     this.mustRecompile = true;
@@ -202,6 +203,12 @@ var Kernel = function (cl, name, file, argTypes) {
     //     that.totalRuns++;
     //     return Q(that);
     // }
+    //
+    //
+    function getKernelSource(kernel_path, kernelName) {
+        logger.trace('Fetching source for kernel %s at path %s, using fs read', kernelName, kernel_path);
+        return Q.denodeify(fs.readFile)(kernel_path, {encoding: 'utf8'});
+    }
 
 }
 

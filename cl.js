@@ -4,30 +4,11 @@ var Q = require('q');
 var _ = require('underscore');
 var nodeutil = require('util');
 var path = require('path');
+var Kernel = require('./kernel.js');
+var CLBuffer = require('./clBuffer.js');
+var types = require('./types.js');
 
 var ocl = require('node-opencl');
-
-// TODO: remove types from SimCL, since they are no longer needed
-var types = {
-    char_t: "char",
-    double_t: "double",
-    float_t: "float",
-    half_t: "half",
-    int_t: "int",
-    local_t: "__local",
-    long_t: "long",
-    short_t: "short",
-    uchar_t: "uchar",
-    uint_t: "uint",
-    ulong_t: "ulong",
-    ushort_t: "ushort",
-    float2_t: "float2",
-    float3_t: "float3",
-    float4_t: "float4",
-    float8_t: "float8",
-    float16_t: "float16",
-    define: '#define',
-};
 
 var defaultVendor = 'nvidia';
 
@@ -46,22 +27,24 @@ var clDeviceType = {
 // that argument, even on old versions. Instead, we should query the kernel for the types of each
 // argument and fill in that information automatically, when required by old WebCL versions.
 
-var create = Q.promised(function(device, vendor) {
+var CLjs = function(device, vendor) {
     vendor = vendor || 'default';
     device = device || 'all';
+    this.types = types;
     var clDevice = clDeviceType[device.toLowerCase()];
     if (!clDevice) {
-        console.log('Unknown device %s, using "all"', device);
+        console.warn('Unknown device %s, using "all"', device);
         clDevice = clDeviceType.all;
     }
-    return createCLContextNode(renderer, clDevice, vendor.toLowerCase());
-});
+    this.createCLContextNode(clDevice, vendor.toLowerCase());
+};
 
 
-function createCLContextNode(DEVICE_TYPE, vendor) {
+CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     if (ocl === undefined) {
         throw new Error("No OpenCL found.");
     }
+
     if (ocl === null) {
         throw new Error("Can't access OpenCL object");
     }
@@ -195,13 +178,32 @@ function createCLContextNode(DEVICE_TYPE, vendor) {
         numCores: ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_COMPUTE_UNITS)
     };
 
-    //FIXME ??
-    res.compile = compile.bind(this, res);
-    res.createBuffer = createBuffer.bind(this, res);
-    res.createBufferGL = createBufferGL.bind(this, res);
-    res.finish = finish;
+    this.cl = ocl;
+    this.context = deviceWrapper.context;
+    this.device = deviceWrapper.device;
+    this.queue = deviceWrapper.queue;
+    this.deviceProps = props;
+    this.maxThreads = ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_WORK_GROUP_SIZE);
+    this.numCores = ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_COMPUTE_UNITS);
+}
 
-    return res;
+
+CLjs.prototype.createKernel = function(filename, kernelName, argTypes) {
+    var that = this;
+    var kernel = new Kernel(that, kernelName, filename, argTypes);
+    return kernel;
+
+    // return getKernelSource(filename)
+    //     .then(function(source) {
+    //         var kernel = new Kernel(that, kernelName, source, argTypes);
+    //         return kernel;
+        // });
+};
+
+function getKernelSource(id) {
+    var kernel_path = path.resolve(__dirname, '.' ,'kernels', id);
+    logger.trace('Fetching source for kernel %s at path %s, using fs read', id, kernel_path);
+    return Q.denodeify(fs.readFile)(kernel_path, {encoding: 'utf8'});
 }
 
 
@@ -216,24 +218,30 @@ function createCLContextNode(DEVICE_TYPE, vendor) {
  *          single kernel. If kernels was an array of kernel names, returns an object with each
  *          kernel name mapped to its kernel object.
  */
-var compile = Q.promised(function (cl, source, kernels) {
-    perf.startTiming('graph-viz:cl:compilekernel');
+CLjs.prototype.compile = function (source, kernels) {
+    var that = this;
 
     console.log('Kernel: ', kernels[0]);
     console.log('Compiling kernels');
 
+    var context = that.context;
+    var device = that.device;
+
     var program;
     try {
         // compile and link program
-        program = ocl.createProgramWithSource(cl.context, source);
+        program = ocl.createProgramWithSource(context, source);
         // Note: Include dir is not official webcl, won't work in the browser.
         var includeDir = path.resolve(__dirname, '..', 'kernels');
         var clver = '';
         // use OpenCL 2.0 if available
-        if (parseFloat(cl.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
+        if (parseFloat(that.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
             clver = ' -cl-std=CL2.0';
         }
-        ocl.buildProgram(program, [cl.device], '-I ' + includeDir + ' -cl-fast-relaxed-math ' + clver);
+        // TODO: Take the cl-fast-relaxed-math as an optional parameter.
+        console.log('About to compile');
+        ocl.buildProgram(program, [device], '-I ' + includeDir + ' -cl-fast-relaxed-math ' + clver);
+        console.log('compiled');
 
         // create kernels
         try {
@@ -246,66 +254,55 @@ var compile = Q.promised(function (cl, source, kernels) {
 
             return typeof kernels === "string" ? compiled.unknown : compiled;
         } catch (e) {
+            console.log('ERROR 1: ', e);
             // log.makeQErrorHandler(logger, 'Kernel creation error:')(e);
         }
     } catch (e) {
         try {
-            var buildLog = ocl.getProgramBuildInfo(program, cl.device, ocl.PROGRAM_BUILD_LOG)
+            var buildLog = ocl.getProgramBuildInfo(program, that.device, ocl.PROGRAM_BUILD_LOG)
+            console.log('ERROR 2: ', buildLog);
             // log.makeQErrorHandler(logger, 'OpenCL compilation error')(buildLog);
         } catch (e2) {
+            console.log('ERROR 3: ', e2);
             // log.makeQErrorHandler(logger, 'OpenCL compilation failed, no build log possible')(e2);
         }
     }
-});
-
-
-
-var acquire = function (buffers) {
-    return Q.all(
-        (buffers||[]).map(function (buffer) {
-            return buffer.acquire();
-        }));
 };
 
-
-var release = function (buffers) {
-    return Q.all(
-        (buffers||[]).map(function (buffer) {
-            return buffer.release();
-        }));
+CLjs.prototype.finish = function () {
+    ocl.finish(this.queue);
+    // TODO: Finish;
 };
-
-
-// Executes the specified kernel, with `threads` number of threads, acquiring/releasing any needed resources
-var call = Q.promised(function (kernel, globalSize, buffers, localSize) {
-    return acquire(buffers)
-        .then(function () {
-            var workgroup;
-            if (localSize === undefined || localSize === null) {
-                workgroup = null;
-            } else {
-                workgroup = [localSize];
-            }
-            var global = [globalSize];
-            // TODO: passing `null` might a problem with node-opencl
-            ocl.enqueueNDRangeKernel(kernel.cl.queue, kernel.kernel, null, global, workgroup);
-        })
-        // .fail(log.makeQErrorHandler(logger, 'Kernel error'))
-        // TODO: need GL buffer interoperability?
-        //.then(release.bind('', buffers)) // Release of GL buffers
-        .then(function () {
-            // wait for kernel to finish
-            // TODO: isn't this also called somewhere else?
-            ocl.finish(kernel.cl.queue);
-        })
-        .then(_.constant(kernel));
-});
 
 var finish = function(queue) {
     ocl.finish(queue);
 };
 
-var createBuffer = Q.promised(function(cl, size, name) {
+CLjs.prototype.createBuffer = function (maybeObject, name) {
+    var buffer;
+
+    // Case where passed in array.
+    if (maybeObject.length) {
+        buffer = new CLBuffer(this, maybeObject.byteLength, name);
+    // Case where size passed in.
+    } else {
+        buffer = new CLBuffer(this, maybeObject, name);
+    }
+
+    if (maybeObject.length) {
+        return buffer.write(maybeObject);
+    } else {
+        return buffer;
+    }
+
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// CL Buffer class. Move this to other file.
+//////////////////////////////////////////////////////////////////////////////
+
+var CLBuffer = function (cl, size, name) {
+    var that = this;
     console.log("Creating buffer %s, size %d", name, size);
 
     var buffer = ocl.createBuffer(cl.context, ocl.MEM_READ_WRITE, size);
@@ -314,130 +311,100 @@ var createBuffer = Q.promised(function(cl, size, name) {
         throw new Error("Could not create the OpenCL buffer");
     }
 
-    var bufObj = {
-        "name": name,
-        "buffer": buffer,
-        "cl": cl,
-        "size": size,
-        // FIXME: acquire and release could be removed after GL dependencies are
-        //        scraped
-        "acquire": function() {
-            return Q();
-        },
-        "release": function() {
-            return Q();
-        }
-    };
-    bufObj.delete = Q.promised(function() {
-        //buffer.release();
+    this.name = name;
+    this.cl = cl;
+    this.buffer = buffer;
+    this.size = size;
+
+    this.delete = Q.promised(function() {
         ocl.ReleaseMemObject(buffer);
-        bufObj.size = 0;
+        that.size = 0;
         return null;
     });
-    bufObj.write = write.bind(this, bufObj);
-    bufObj.read = read.bind(this, bufObj);
-    bufObj.copyInto = copyBuffer.bind(this, cl, bufObj);
-    return bufObj;
-});
+
+};
 
 
-// TODO: If we call buffer.acquire() twice without calling buffer.release(), it should have no
-// effect.
-function createBufferGL(cl, vbo, name) {
-    console.log("Creating buffer %s from GL buffer", name);
-
-    if(vbo.gl === null) {
-        console.log("GL not enabled; falling back to creating CL buffer");
-        return createBuffer(cl, vbo.len, name)
-            .then(function(bufObj) {
-                if(vbo.data !== null) {
-                    return bufObj.write(vbo.data);
-                } else {
-                    return bufObj;
-                }
-            })
-            .then(function(bufObj) {
-                // Delete reference to data once we've written it, so we don't leak memory
-                bufObj.data = null;
-                return bufObj;
-            });
-    }
-
-    throw new Error("shared GL/CL buffers not supported by node-opencl");
-}
-
-
-var copyBuffer = Q.promised(function (cl, source, destination) {
+CLBuffer.prototype.copyInto = function (destination) {
     console.log("Copying buffer. Source: %s (%d bytes), destination %s (%d bytes)",
-        source.name, source.size, destination.name, destination.size);
-    return acquire([source, destination])
+        this.name, this.size, destination.name, destination.size);
+
+    var queue = this.cl.queue;
+    var that = this;
+    return Q()
         .then(function () {
-            ocl.enqueueCopyBuffer(cl.queue, source.buffer, destination.buffer, 0, 0, Math.min(source.size, destination.size));
+            ocl.enqueueCopyBuffer(queue, that.buffer, destination.buffer, 0, 0, Math.min(that.size, destination.size));
         })
-        // .then(function () {
-        //     cl.queue.finish();
-        // })
-        .then(release.bind(null, [source, destination]));
-});
+        .then(function () {
+            ocl.finish(queue);
+            return that;
+        });
+};
 
 
-var write = Q.promised(function write(buffer, data) {
-    console.log('Writing to buffer', buffer.name, buffer.size, 'bytes');
+CLBuffer.prototype.write = function (data) {
+    var that = this;
+    console.log('Writing to buffer', this.name, this.size, 'bytes');
 
     // Attempting to write data of size 0 seems to crash intel GPU drivers, so return.
     if (data.byteLength === 0) {
-        return Q(buffer);
+        return that;
     }
+
+    ocl.enqueueWriteBuffer(that.cl.queue, that.buffer, true, 0, data.byteLength, data);
+    return that;
+
+
 
     // TODO acquire not needed if GL is dropped
-    return buffer.acquire()
-        .then(function () {
-            console.log('Writing Buffer', buffer.name, ' with byteLength: ', data.byteLength);
-            ocl.enqueueWriteBuffer(buffer.cl.queue, buffer.buffer, true, 0, data.byteLength, data);
-            return buffer.release();
-        })
-        .then(function() {
-            // buffer.cl.queue.finish();
-            console.log("Finished buffer %s write", buffer.name);
+    // return Q()
+    //     .then(function () {
+    //         console.log('Writing Buffer', that.name, ' with byteLength: ', data.byteLength);
+    //         ocl.enqueueWriteBuffer(that.cl.queue, that.buffer, true, 0, data.byteLength, data);
+    //     })
+    //     .then(function() {
+    //         // buffer.cl.queue.finish();
+    //         console.log("Finished buffer %s write", that.name);
+    //         return that;
+    //     });
+};
 
-            return buffer;
-        });
-});
+CLBuffer.prototype.read = function (cons, optStartIdx, optLen) {
+    var that = this;
+    var numElements = that.size / cons.BYTES_PER_ELEMENT;
+    var resultBuffer = new cons(numElements);
+
+    that.readInto(resultBuffer, optStartIdx, optLen);
+    return resultBuffer;
+};
 
 
-var read = Q.promised(function (buffer, target, optStartIdx, optLen) {
-    console.log('Reading from buffer', buffer.name);
-    var start = Math.min(optStartIdx || 0, buffer.size);
-    var len = optLen !== undefined ? optLen : (buffer.size - start);
+CLBuffer.prototype.readInto = function (target, optStartIdx, optLen) {
+    var that = this;
+
+    console.log('Reading from buffer', that.name);
+    var start = Math.min(optStartIdx || 0, that.size);
+    var len = optLen !== undefined ? optLen : (that.size - start);
 
     if (len === 0) {
-        return Q(buffer);
+        return that;
     }
 
-    return buffer.acquire()
-        .then(function() {
-            console.log('Reading Buffer', buffer.name, start, len);
-            ocl.enqueueReadBuffer(buffer.cl.queue, buffer.buffer, true, start, len, target);
-            // TODO acquire and release not needed if GL is dropped
-            return buffer.release();
-        })
-        .then(function() {
-            console.log('Done Reading: ', buffer.name);
-            return buffer;
-        });
+    ocl.enqueueReadBuffer(that.cl.queue, that.buffer, true, start, len, target);
+    return that;
+
+    // return Q()
+    //     .then(function() {
+    //         console.log('Reading Buffer', that.name, start, len);
+    //         ocl.enqueueReadBuffer(that.cl.queue, that.buffer, true, start, len, target);
+    //         // TODO acquire and release not needed if GL is dropped
+    //     })
+    //     .then(function() {
+    //         console.log('Done Reading: ', that.name);
+    //         return that;
+    //     });
         // .fail(log.makeQErrorHandler(logger, 'Read error for buffer', buffer.name));
-});
-
-
-module.exports = {
-    "acquire": acquire,
-    "call": call,
-    "compile": compile,
-    "create": create,
-    "createBuffer": createBuffer,
-    "createBufferGL": createBufferGL,
-    "release": release,
-    "types": types,
-    "write": write,
-    "read": read
 };
+
+module.exports = CLjs;
+

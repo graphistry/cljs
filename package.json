@@ -10,8 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "bunyan": "~1.5.1",
-    "node-opencl": "mikeseven/node-opencl",
+    "common": "graphistry/common",
+    "express": "*",
+    "node-opencl": "mikeseven/node-opencl#69dda1c7f61bc26376013c1e89c687cdd980d373",
     "q": "~1.1.0",
+    "sprintf-js": "*",
     "underscore": "~1.8.0"
   }
 }

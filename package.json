@@ -6,6 +6,7 @@
   "main": "src/cl.js",
   "author": "",
   "scripts": {
+      "test": "./tests/add.js"
   },
   "license": "ISC",
   "dependencies": {

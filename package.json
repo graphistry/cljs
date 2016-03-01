@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "description": "Convenience library build on node-opencl",
-  "main": "openClTester.js",
+  "main": "src/cl.js",
   "author": "",
   "scripts": {
   },

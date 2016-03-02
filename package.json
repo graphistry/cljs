@@ -8,14 +8,13 @@
   "scripts": {
       "test": "./tests/add.js"
   },
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "dependencies": {
     "bunyan": "~1.5.1",
-    "common": "graphistry/common",
-    "express": "*",
+    "debug": "~2.2.0",
     "node-opencl": "mikeseven/node-opencl#69dda1c7f61bc26376013c1e89c687cdd980d373",
-    "q": "~1.1.0",
-    "sprintf-js": "*",
+    "q": "~1.4.1",
+    "sprintf-js": "~1.0.3",
     "underscore": "~1.8.0"
   }
 }

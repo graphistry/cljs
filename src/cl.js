@@ -200,12 +200,6 @@ CLjs.prototype.createKernel = function(filename, kernelName, argTypes) {
         // });
 };
 
-function getKernelSource(id) {
-    var kernel_path = path.resolve(__dirname, '.' ,'kernels', id);
-    logger.trace('Fetching source for kernel %s at path %s, using fs read', id, kernel_path);
-    return Q.denodeify(fs.readFile)(kernel_path, {encoding: 'utf8'});
-}
-
 
 /**
  * Compile the WebCL program source and return the kernel(s) requested

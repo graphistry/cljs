@@ -4,19 +4,12 @@ var _ = require('underscore');
 var Q = require('q');
 var path = require('path');
 var fs = require('fs');
-var util = require('./util');
-var fs = require('fs');
 var types = require('./types.js');
-
 var ocl = require('node-opencl');
 
-var log         = require('common/logger.js');
-var logger      = log.createLogger('cljs:kernel');
+var log = require('./logger.js');
+var logger = log.createLogger('cljs:kernel');
 
-// Disable debug logging since this file is responsible for 90% of log output.
-// Comment me for local debugging.
-//debug = function () {}
-//Q.longStackSupport = true;
 
 // TODO: Add back in support for defines.
 
@@ -55,16 +48,8 @@ var Kernel = function (cl, name, file, argTypes) {
     this.totalRuns = 0;
     var maxTimings = 100;
 
-    // Sanity Checks
-    // _.each(argNames, function (arg) {
-    //     if (!(arg in argTypes)) {
-    //         logger.die('In Kernel %s, argument %s has no type', name, arg);
-    //     }
-    // });
-
     function isDefine(arg) {
         return arg === types.define;
-        // return argTypes[arg] === cljs.types.define;
     };
 
 
@@ -205,6 +190,7 @@ var Kernel = function (cl, name, file, argTypes) {
     // }
     //
     //
+
     function getKernelSource(kernel_path, kernelName) {
         logger.trace('Fetching source for kernel %s at path %s, using fs read', kernelName, kernel_path);
         return Q.denodeify(fs.readFile)(kernel_path, {encoding: 'utf8'});

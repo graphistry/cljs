@@ -4,13 +4,12 @@ var convolve = require('../convolve.js');
 var getPixels = require('get-pixels');
 var savePixels = require('save-pixels');
 var toArray = require('stream-to-array');
-// var cljs = require('../../../cl.js');
 
-// var imgName = 'flower.jpg';
 var imgName = 'redpandasmall.jpg';
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
+    var useOpenCL = req.query.mode && req.query.mode === 'opencl';
 
     getPixels('public/images/' + imgName, function(err, pixels) {
         if(err) {
@@ -44,7 +43,7 @@ router.get('/', function(req, res, next) {
 
         // Process pixels
         // rawData = convolve.blur(rawData, width, height);
-        rawData = convolve.edgeDetection(rawData, width, height);
+        rawData = convolve.edgeDetection(rawData, width, height, useOpenCL);
         rawData.then(function (rawData) {
 
             var end = Date.now();

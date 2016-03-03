@@ -19,7 +19,7 @@ function blur (imageData, width, height) {
 
 }
 
-function edgeDetection (imageData, width, height) {
+function edgeDetection (imageData, width, height, opencl) {
 
     var mask = new Int32Array([
         -1, -1, -1,
@@ -27,12 +27,11 @@ function edgeDetection (imageData, width, height) {
         -1, -1, -1
     ]);
 
-    // return convolve(imageData, width, height, mask);
-    return convolveFast(imageData, width, height, mask);
-
+    var convolve = opencl ? convolveCl : convolveJs;
+    return convolve(imageData, width, height, mask);
 }
 
-function convolveFast(imageData, width, height, mask) {
+function convolveCl(imageData, width, height, mask) {
     // Fast Code Here
 
     var numElements = imageData.length;
@@ -54,7 +53,7 @@ function convolveFast(imageData, width, height, mask) {
 }
 
 
-function convolve (imageData, width, height, mask) {
+function convolveJs(imageData, width, height, mask) {
 
     var newImageData = new Uint8Array(imageData.length);
     var off = offset.bind(null, width, height, 4);
@@ -115,7 +114,6 @@ function offset(width, height, channels, w, h, c) {
 module.exports = {
     blur: blur,
     edgeDetection: edgeDetection,
-    convolve: convolve
 };
 
     // var imageBuffer = cl.createBuffer(imageData);

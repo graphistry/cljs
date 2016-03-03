@@ -30,7 +30,7 @@ var clDeviceType = {
 // argument and fill in that information automatically, when required by old WebCL versions.
 
 var CLjs = function(device, vendor) {
-    vendor = vendor || 'default';
+    vendor = vendor || defaultVendor;
     device = device || 'all';
     this.types = types;
     var clDevice = clDeviceType[device.toLowerCase()];
@@ -88,10 +88,6 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
             computeUnits: computeUnits
         };
     });
-
-    if (vendor === 'default') {
-        vendor = defaultVendor;
-    }
 
     // sort devices first by "nvidia" and then by "computeUnits"
     devices.sort(function(a, b) {
@@ -217,7 +213,7 @@ CLjs.prototype.createKernel = function(filename, kernelName, argTypes) {
 CLjs.prototype.compile = function (source, kernels, includeDir) {
     var that = this;
 
-    logger.trace('Compiling kernel: ', kernels[0]);
+    logger.trace('Compiling kernels: ', kernels);
 
     var context = that.context;
     var device = that.device;

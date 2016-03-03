@@ -50,7 +50,7 @@ var Kernel = function (cl, name, file, argTypes) {
 
     function isDefine(arg) {
         return arg === types.define;
-    };
+    }
 
 
     this.defines = {

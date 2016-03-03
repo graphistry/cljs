@@ -21,5 +21,5 @@ addKernel.run([256], [256], args)
     .then(function (info) {
         console.log('Ran');
         var result = outputBuffer.read(Int32Array);
-        console.log('Result is: ', result);
+        console.log('Result is: ', Array.prototype.slice.call(result));
     });

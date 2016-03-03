@@ -4,12 +4,14 @@ var Q = require('q');
 var _ = require('underscore');
 var nodeutil = require('util');
 var path = require('path');
-
 var ocl = require('node-opencl');
+
+var log = require('./logger.js');
+var logger = log.createLogger('cljs:clbuffer');
 
 var CLBuffer = function (cl, size, name) {
     var that = this;
-    console.log("Creating buffer %s, size %d", name, size);
+    logger.debug("Creating buffer %s, size %d", name, size);
 
     var buffer = ocl.createBuffer(cl.context, ocl.MEM_READ_WRITE, size);
 
@@ -31,7 +33,7 @@ var CLBuffer = function (cl, size, name) {
 };
 
 CLBuffer.prototype.copyInto = function (destination) {
-    console.log("Copying buffer. Source: %s (%d bytes), destination %s (%d bytes)",
+    logger.debug("Copying buffer. Source: %s (%d bytes), destination %s (%d bytes)",
         this.name, this.size, destination.name, destination.size);
 
     var queue = this.cl.queue;
@@ -49,7 +51,7 @@ CLBuffer.prototype.copyInto = function (destination) {
 
 CLBuffer.prototype.write = function (data) {
     var that = this;
-    console.log('Writing to buffer', this.name, this.size, 'bytes');
+    logger.debug('Writing to buffer', this.name, this.size, 'bytes');
 
     // Attempting to write data of size 0 seems to crash intel GPU drivers, so return.
     if (data.byteLength === 0) {
@@ -87,7 +89,7 @@ CLBuffer.prototype.read = function (cons, optStartIdx, optLen) {
 CLBuffer.prototype.readInto = function (target, optStartIdx, optLen) {
     var that = this;
 
-    console.log('Reading from buffer', that.name);
+    logger.debug('Reading from buffer', that.name);
     var start = Math.min(optStartIdx || 0, that.size);
     var len = optLen !== undefined ? optLen : (that.size - start);
 

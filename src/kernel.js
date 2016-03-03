@@ -196,7 +196,7 @@ var Kernel = function (cl, name, file, argTypes) {
         return Q.denodeify(fs.readFile)(kernel_path, {encoding: 'utf8'});
     }
 
-}
+};
 
 Kernel.prototype.define = function (key, val) {
     if (arguments.length === 1) {
@@ -205,7 +205,7 @@ Kernel.prototype.define = function (key, val) {
         this.defines[key] = val;
     }
     this.mustRecompile = true;
-}
+};
 
 
 Kernel.prototype.set = function (args) {
@@ -227,9 +227,8 @@ Kernel.prototype.set = function (args) {
 
 
 Kernel.prototype.setAllArgs = function (kernel) {
-    console.log('Setting arguments for kernel', this.name);
+    logger.trace('Setting arguments for kernel', this.name);
     var argValues = this.argValues;
-    console.log('argValues: ', _.pluck(argValues, 'val'));
     var argTypes = this.argTypesByPosition;
     var i;
     try {
@@ -244,19 +243,18 @@ Kernel.prototype.setAllArgs = function (kernel) {
             }
 
             if (val === null) {
-                console.log('In kernel %s, argument %s is null', this.name, arg);
+                logger.trace('In kernel %s, argument %s is null', this.name, arg);
             }
 
             if (dirty) {
-                console.log('Setting arg %d of kernel %s to value %s', i, this.name, val);
+                logger.trace('Setting arg %d of kernel %s to value %s', i, this.name, val);
                 ocl.setKernelArg(kernel, i, val, type);
                 arg.dirty = false;
             }
         }
 
     } catch (e) {
-        console.log('Error setting argument: ', e);
-        // log.makeQErrorHandler(logger, 'Error setting argument %s of kernel %s', args[i], this.name)(e);
+        log.makeQErrorHandler(logger, 'Error setting argument %s of kernel %s', args[i], this.name)(e);
     }
 };
 
@@ -293,12 +291,12 @@ Kernel.prototype.compile = function () {
 
     return this.qSource.then(function (source) {
         var processedSource = prefix + '\n\n' + source;
-        console.log('precoesed source: ', processedSource);
+        logger.trace('preprocessed source: ', processedSource);
         return processedSource;
     }).then(function (processedSource) {
         var kernels = that.cl.compile(processedSource, [that.name]);
         that.mustRecompile = false;
-        console.log('returned kernels: ', kernels);
+        logger.trace('Build returned kernels: ', kernels);
         return kernels[that.name];
     });
 };
@@ -307,24 +305,21 @@ Kernel.prototype.compile = function () {
 Kernel.prototype.run = function(numWorkItems, workGroupSize, args) {
     var that = this;
     if (args) {
-        console.log('setting args');
+        logger.trace('Setting args');
         this.set(args);
     }
 
     if (this.mustRecompile) {
-        console.log('Recompiling');
+        logger.trace('Recompiling');
         this.qKernel = this.compile();
     }
 
-    console.log('finished assigning to compile');
     return this.qKernel.then(function (kernel) {
-
-        console.log('got kernel: ', kernel);
         if (kernel === null || kernel === undefined) {
             logger.error('Kernel is not compiled, aborting');
             return Q();
         } else {
-            console.log('Setting arguments');
+            logger.trace('Setting kernel arguments');
             that.setAllArgs(kernel);
             return that.callKernel(kernel, numWorkItems, workGroupSize);
         }
@@ -335,13 +330,12 @@ Kernel.prototype.callKernel = function (kernel, workItems, workGroupSize) {
     // TODO: Consider acquires and releases of buffers.
     var queue = this.cl.queue;
     logger.trace('Enqueuing kernel %s', this.name, kernel);
-    console.log('Enqueuing kernel');
     // var start = process.hrtime();
     ocl.enqueueNDRangeKernel(queue, kernel, 1, null, workItems, workGroupSize || null);
 
     // TODO: Generalize sync/async.
     this.cl.finish();
-    console.log('Finished');
+    logger.trace('Finished');
 
     // if (synchronous) {
     //     logger.trace('Waiting for kernel to finish');
@@ -351,7 +345,7 @@ Kernel.prototype.callKernel = function (kernel, workItems, workGroupSize) {
     // }
     // that.totalRuns++;
     return Q(this);
-}
+};
 
 
 

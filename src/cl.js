@@ -7,8 +7,10 @@ var path = require('path');
 var Kernel = require('./kernel.js');
 var CLBuffer = require('./clBuffer.js');
 var types = require('./types.js');
-
 var ocl = require('node-opencl');
+
+var log = require('./logger.js');
+var logger = log.createLogger('cljs:cl');
 
 var defaultVendor = 'nvidia';
 
@@ -33,7 +35,7 @@ var CLjs = function(device, vendor) {
     this.types = types;
     var clDevice = clDeviceType[device.toLowerCase()];
     if (!clDevice) {
-        console.warn('Unknown device %s, using "all"', device);
+        logger.warn('Unknown device %s, using "all"', device);
         clDevice = clDeviceType.all;
     }
     this.createCLContextNode(clDevice, vendor.toLowerCase());
@@ -53,18 +55,18 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     if (platforms.length === 0) {
         throw new Error("Can't find any OpenCL platforms");
     }
-    console.log("Found %d OpenCL platforms; using first", platforms.length);
+    logger.debug("Found %d OpenCL platforms; using first", platforms.length);
     var platform = platforms[0];
 
     var clDevices = ocl.getDeviceIDs(platform, DEVICE_TYPE);
 
-    console.log("Devices found on platform: %d", clDevices.length);
+    logger.debug("Devices found on platform: %d", clDevices.length);
     if(clDevices.length < 1) {
         throw new Error("No OpenCL devices of specified type (" + DEVICE_TYPE + ") found");
     }
 
     var devices = clDevices.map(function(d) {
-        console.log("Found device %s", nodeutil.inspect(d, {depth: null, showHidden: true, colors: true}));
+        logger.debug("Found device %s", nodeutil.inspect(d, {depth: null, showHidden: true, colors: true}));
 
         var typeToString = function (v) {
             return v === ocl.DEVICE_TYPE_CPU ? 'CPU'
@@ -132,7 +134,7 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
             }
             deviceWrapper = wrapped;
         } catch (e) {
-            console.log("Skipping device %d due to error %o. %o", i, e, wrapped);
+            logger.log("Skipping device %d due to error %o. %o", i, e, wrapped);
             err = e;
         }
     }
@@ -154,18 +156,18 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     }));
     props.TYPE = deviceWrapper.deviceType;
 
-    console.log('OpenCL    Type:%s  Vendor:%s  Device:%s',
+    logger.info('OpenCL    Type:%s  Vendor:%s  Device:%s',
                 props.TYPE, props.VENDOR, props.NAME);
 
     // extract supported OpenCL version
     props.MAX_CL_VERSION = props.VERSION.substring(7,10);
 
-    console.log('Device Sizes   WorkGroup:%d  WorkItem:%s', props.MAX_WORK_GROUP_SIZE,
+    logger.info('Device Sizes   WorkGroup:%d  WorkItem:%s', props.MAX_WORK_GROUP_SIZE,
          props.MAX_WORK_ITEM_SIZES);
-    console.log('Max Mem (kB)   Global:%d  Alloc:%d  Local:%d  Constant:%d',
+    logger.info('Max Mem (kB)   Global:%d  Alloc:%d  Local:%d  Constant:%d',
           props.GLOBAL_MEM_SIZE / 1024, props.MAX_MEM_ALLOC_SIZE / 1024,
           props.LOCAL_MEM_SIZE / 1024, props.MAX_CONSTANT_BUFFER_SIZE / 1024);
-    console.log('Profile (ns)   Type:%s  Resolution:%d',
+    logger.info('Profile (ns)   Type:%s  Resolution:%d',
          props.PROFILE, props.PROFILING_TIMER_RESOLUTION);
 
     var res = {
@@ -212,11 +214,10 @@ CLjs.prototype.createKernel = function(filename, kernelName, argTypes) {
  *          single kernel. If kernels was an array of kernel names, returns an object with each
  *          kernel name mapped to its kernel object.
  */
-CLjs.prototype.compile = function (source, kernels) {
+CLjs.prototype.compile = function (source, kernels, includeDir) {
     var that = this;
 
-    console.log('Kernel: ', kernels[0]);
-    console.log('Compiling kernels');
+    logger.trace('Compiling kernel: ', kernels[0]);
 
     var context = that.context;
     var device = that.device;
@@ -225,47 +226,46 @@ CLjs.prototype.compile = function (source, kernels) {
     try {
         // compile and link program
         program = ocl.createProgramWithSource(context, source);
-        // Note: Include dir is not official webcl, won't work in the browser.
-        var includeDir = path.resolve(__dirname, '..', 'kernels');
-        var clver = '';
-        // use OpenCL 2.0 if available
-        if (parseFloat(that.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
-            clver = ' -cl-std=CL2.0';
-        }
+
         // TODO: Take the cl-fast-relaxed-math as an optional parameter.
-        console.log('About to compile');
-        ocl.buildProgram(program, [device], '-I ' + includeDir + ' -cl-fast-relaxed-math ' + clver);
-        console.log('compiled');
+        var buildParams = ['-cl-fast-relaxed-math'];
+        if (includeDir) {
+            // Note: Include dir is not official webcl, won't work in the browser.
+            buildParams.push('-I ' + includeDir);
+        }
+        if (parseFloat(that.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
+            buildParams.push('-cl-std=CL2.0');
+        }
+
+        logger.trace('Building with', buildParams);
+        ocl.buildProgram(program, [device], buildParams.join(' '));
+        logger.trace('Build complete');
 
         // create kernels
         try {
             var kernelsObjs = typeof kernels === "string" ? [ 'unknown' ] : kernels;
             var compiled = _.object(kernelsObjs.map(function (kernelName) {
-                    console.log('    Compiling', kernelName);
+                    logger.debug('    Creating Kernel', kernelName);
                     return [kernelName, ocl.createKernel(program, kernelName)];
             }));
-            console.log('    Compiled kernels');
+            logger.trace('    Created kernels');
 
             return typeof kernels === "string" ? compiled.unknown : compiled;
         } catch (e) {
-            console.log('ERROR 1: ', e);
-            // log.makeQErrorHandler(logger, 'Kernel creation error:')(e);
+            log.makeQErrorHandler(logger, 'Kernel creation error')(e);
         }
     } catch (e) {
         try {
-            var buildLog = ocl.getProgramBuildInfo(program, that.device, ocl.PROGRAM_BUILD_LOG)
-            console.log('ERROR 2: ', buildLog);
-            // log.makeQErrorHandler(logger, 'OpenCL compilation error')(buildLog);
+            var buildLog = ocl.getProgramBuildInfo(program, that.device, ocl.PROGRAM_BUILD_LOG);
+            log.makeQErrorHandler(logger, 'OpenCL compilation error')(buildLog);
         } catch (e2) {
-            console.log('ERROR 3: ', e2);
-            // log.makeQErrorHandler(logger, 'OpenCL compilation failed, no build log possible')(e2);
+            log.makeQErrorHandler(logger, 'Kernet creation error (no build log)')(e);
         }
     }
 };
 
 CLjs.prototype.finish = function () {
-    ocl.finish(this.queue);
-    // TODO: Finish;
+    return ocl.finish(this.queue);
 };
 
 CLjs.prototype.createBuffer = function (maybeObject, name) {

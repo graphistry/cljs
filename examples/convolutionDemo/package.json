@@ -1,7 +1,7 @@
 {
   "name": "convolutionDemo",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "start": "node ./bin/www"
   },
@@ -13,12 +13,12 @@
     "get-pixels": "*",
     "jade": "~1.11.0",
     "morgan": "~1.6.1",
-    "node-png": "*",
-    "pngjs": "*",
-    "save-pixels": "*",
-    "stream-to-array": "*",
-    "underscore": "*",
-    "q": "*",
+    "node-png": "~0.4.3",
+    "pngjs": "~2.2.0",
+    "save-pixels": "~2.3.0",
+    "stream-to-array": "~2.3.0",
+    "underscore": "~1.8.3",
+    "q": "~1.4.1",
     "serve-favicon": "~2.3.0"
   }
 }

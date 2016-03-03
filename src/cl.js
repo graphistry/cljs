@@ -233,7 +233,7 @@ CLjs.prototype.compile = function (source, kernels, includeDir) {
             // Note: Include dir is not official webcl, won't work in the browser.
             buildParams.push('-I ' + includeDir);
         }
-        if (parseFloat(that.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
+        if ( parseFloat(that.deviceProps.MAX_CL_VERSION) >= 2.0 && ocl.VERSION_2_0) {
             buildParams.push('-cl-std=CL2.0');
         }
 
@@ -259,7 +259,7 @@ CLjs.prototype.compile = function (source, kernels, includeDir) {
             var buildLog = ocl.getProgramBuildInfo(program, that.device, ocl.PROGRAM_BUILD_LOG);
             log.makeQErrorHandler(logger, 'OpenCL compilation error')(buildLog);
         } catch (e2) {
-            log.makeQErrorHandler(logger, 'Kernet creation error (no build log)')(e);
+            log.makeQErrorHandler(logger, 'Kernel creation error (no build log)')(e);
         }
     }
 };

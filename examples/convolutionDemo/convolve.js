@@ -3,7 +3,7 @@
 var _ = require('underscore');
 var Q = require('q');
 
-var CLjs = require('../../cl.js');
+var CLjs = require('../../src/cl.js');
 var cl = new CLjs();
 
 function blur (imageData, width, height) {

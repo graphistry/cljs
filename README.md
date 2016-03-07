@@ -1,10 +1,10 @@
 # CL.js
 
-Library to make GPU acceleration as seamless and easy as calling an asynchronous function call. Built on top of [Node-OpenCL](https://github.com/mikeseven/node-opencl).
+Library to make GPU acceleration as seamless and easy as calling an asynchronous function call. Built on top of the low-level API provided by [Node-OpenCL](https://github.com/mikeseven/node-opencl).
 
 
 ###### Current State
-This is currently alpha quality. Many features have not been ported over and the API is likely to change.
+This is currently alpha quality. Many features are missing and the API is likely to change.
 
 ## Quick Start
 
@@ -55,10 +55,10 @@ addKernel
 
 ## Going Further
 
-Have a look at the edge detection demo in `cljs/examples/convolutionDemo`. To run it
+Have a look at the edge detection demo in `cljs/examples/convolutionDemo`. You can run the demo in three steps:
 
 1. `cd cljs/examples/convolutionDemo`
 2. `npm start`
 3. Open [localhost:3001?mode=opencl](http://localhost:3001?mode=opencl) in your browser. Compare the speed with [localhost:3001?mode=javascript](http://localhost:3001?mode=javascript)
 
-The meat of the code are in `convolve.js` and `convolve.cl`
+The meat of the code is in `convolve.js` and `convolve.cl`

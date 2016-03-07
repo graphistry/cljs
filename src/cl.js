@@ -1,9 +1,8 @@
-"use strict";
+'use strict';
 
 var Q = require('q');
 var _ = require('underscore');
 var nodeutil = require('util');
-var path = require('path');
 var Kernel = require('./kernel.js');
 var CLBuffer = require('./clBuffer.js');
 var types = require('./types.js');
@@ -108,16 +107,17 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     var deviceWrapper = null, err = null;
     var i;
     var wrapped;
-    var clErrorHandler = function(){
-        // TODO
+    var clErrorHandler = function(err){
+        log.makeQErrorHandler('General CL Error')(err);
     };
     for (i = 0; i < devices.length && deviceWrapper === null; i++) {
         wrapped = devices[i];
 
         try {
             wrapped.context = ocl.createContext([ocl.CONTEXT_PLATFORM, platform],
-                                                   [wrapped.device], clErrorHandler,
-                                                   clErrorHandler);
+                                                [wrapped.device],
+                                                clErrorHandler,
+                                                clErrorHandler);
 
             if (wrapped.context === null) {
                 throw new Error("Error creating WebCL context");
@@ -166,16 +166,6 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     logger.info('Profile (ns)   Type:%s  Resolution:%d',
          props.PROFILE, props.PROFILING_TIMER_RESOLUTION);
 
-    var res = {
-        cl: ocl,
-        context: deviceWrapper.context,
-        device: deviceWrapper.device,
-        queue: deviceWrapper.queue,
-        deviceProps: props,
-        maxThreads: ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_WORK_GROUP_SIZE),
-        numCores: ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_COMPUTE_UNITS)
-    };
-
     this.cl = ocl;
     this.context = deviceWrapper.context;
     this.device = deviceWrapper.device;
@@ -183,19 +173,13 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
     this.deviceProps = props;
     this.maxThreads = ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_WORK_GROUP_SIZE);
     this.numCores = ocl.getDeviceInfo(deviceWrapper.device, ocl.DEVICE_MAX_COMPUTE_UNITS);
-}
+};
 
 
 CLjs.prototype.createKernel = function(filename, kernelName, argTypes) {
     var that = this;
     var kernel = new Kernel(that, kernelName, filename, argTypes);
     return kernel;
-
-    // return getKernelSource(filename)
-    //     .then(function(source) {
-    //         var kernel = new Kernel(that, kernelName, source, argTypes);
-    //         return kernel;
-        // });
 };
 
 
@@ -260,9 +244,11 @@ CLjs.prototype.compile = function (source, kernels, includeDir) {
     }
 };
 
+
 CLjs.prototype.finish = function () {
     return ocl.finish(this.queue);
 };
+
 
 CLjs.prototype.createBuffer = function (maybeObject, name) {
     var buffer;
@@ -281,7 +267,8 @@ CLjs.prototype.createBuffer = function (maybeObject, name) {
         return buffer;
     }
 
-}
+};
+
 
 module.exports = CLjs;
 

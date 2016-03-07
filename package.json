@@ -1,8 +1,8 @@
 {
   "name": "cljs",
-  "private": true,
+  "private": false,
   "version": "0.0.1",
-  "description": "Convenience library build on node-opencl",
+  "description": "Convenience library build on top of node-opencl",
   "main": "src/cl.js",
   "author": "",
   "scripts": {

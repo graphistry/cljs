@@ -5,7 +5,7 @@ var getPixels = require('get-pixels');
 var savePixels = require('save-pixels');
 var toArray = require('stream-to-array');
 
-var imgName = 'redpandasmall.jpg';
+var imgName = 'redpandasmall.JPG';
 
 /* GET home page. */
 router.get('/', function(req, res, next) {

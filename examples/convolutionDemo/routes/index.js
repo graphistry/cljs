@@ -81,7 +81,7 @@ router.get('/', function(req, res, next) {
                     title: 'Edge Detection Demo',
                     duration: String(duration) + ' ms to compute.',
                     imageUrl: imageUrl,
-                    imageUrl2: 'http://localhost:3001/images/' + imgName
+                    imageUrl2: '/images/' + imgName
                 });
             });
 

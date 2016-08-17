@@ -130,7 +130,7 @@ CLjs.prototype.createCLContextNode = function (DEVICE_TYPE, vendor) {
             }
             deviceWrapper = wrapped;
         } catch (e) {
-            logger.log("Skipping device %d due to error %o. %o", i, e, wrapped);
+            logger.warn("Skipping device %d due to error %o. %o", i, e, wrapped);
             err = e;
         }
     }

@@ -5,4 +5,5 @@ COPY . /app
 RUN bash -l -c "npm link"
 WORKDIR /app/examples/convolutionDemo
 RUN bash -l -c "npm link"
-CMD npm start
+WORKDIR /app
+CMD bash -c "npm test && cd examples/convolutionDemo && npm start"

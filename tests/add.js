@@ -21,5 +21,12 @@ addKernel.run([256], [256], args)
     .then(function (info) {
         console.log('Ran');
         var result = outputBuffer.read(Int32Array);
-        console.log('Result is: ', Array.prototype.slice.call(result));
+        var resultStr = JSON.stringify(Array.prototype.slice.call(result));
+        var expectedStr = "[3,3,3]";
+        if(resultStr !== expectedStr) throw new Error("Expected " + expectedStr + " but got " + resultStr);
+        console.log("Success");
+        process.exit(0);
+    }).catch(function (reason) {
+        console.error(reason);
+        process.exit(1);
     });

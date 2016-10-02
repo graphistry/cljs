@@ -12,7 +12,7 @@
   "dependencies": {
     "bunyan": "~1.5.1",
     "debug": "~2.2.0",
-    "node-opencl": "mikeseven/node-opencl#69dda1c7f61bc26376013c1e89c687cdd980d373",
+    "node-opencl": "0.4.5",
     "q": "~1.4.1",
     "sprintf-js": "~1.0.3",
     "underscore": "~1.8.0"

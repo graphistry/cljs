@@ -59,7 +59,7 @@ var Kernel = function (cl, name, file, argTypes) {
 
                 if (dirty) {
                     logger.trace('Setting arg %d of kernel %s to value %s', i, that.name, val);
-                    ocl.setKernelArg(kernel, i, val, type);
+                    ocl.setKernelArg(kernel, i, type, val);
                     arg.dirty = false;
                 }
             }

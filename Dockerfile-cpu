@@ -1,4 +1,4 @@
-FROM graphistry/cpu-base:6.7
+FROM graphistry/cpu-base:6.9.3
 
 WORKDIR /app
 COPY . /app

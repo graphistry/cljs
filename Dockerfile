@@ -1,4 +1,4 @@
-FROM graphistry/js-and-gpu:0.10.46
+FROM graphistry/js-and-gpu:7.4.0
 
 WORKDIR /app
 COPY . /app

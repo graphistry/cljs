@@ -1,4 +1,4 @@
-FROM graphistry/cpu-base:6.9.3
+FROM graphistry/js-and-cpu:7.10.0
 
 WORKDIR /app
 COPY . /app
